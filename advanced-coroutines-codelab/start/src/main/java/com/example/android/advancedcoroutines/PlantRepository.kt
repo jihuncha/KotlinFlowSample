@@ -16,6 +16,12 @@
 
 package com.example.android.advancedcoroutines
 
+import android.util.Log
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.liveData
+import androidx.lifecycle.map
+import com.example.android.advancedcoroutines.util.CacheOnSuccess
+import com.example.android.advancedcoroutines.utils.ComparablePair
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 
@@ -38,14 +44,14 @@ class PlantRepository private constructor(
      * Fetch a list of [Plant]s from the database.
      * Returns a LiveData-wrapped List of Plants.
      */
-    val plants = plantDao.getPlants()
+//    val plants = plantDao.getPlants()
 
     /**
      * Fetch a list of [Plant]s from the database that matches a given [GrowZone].
      * Returns a LiveData-wrapped List of Plants.
      */
-    fun getPlantsWithGrowZone(growZone: GrowZone) =
-        plantDao.getPlantsWithGrowZoneNumber(growZone.number)
+//    fun getPlantsWithGrowZone(growZone: GrowZone) =
+//        plantDao.getPlantsWithGrowZoneNumber(growZone.number)
 
     /**
      * Returns true if we should make a network request.
@@ -91,14 +97,56 @@ class PlantRepository private constructor(
         plantDao.insertAll(plants)
     }
 
+    //TODO 추가
+    /**
+     * 맞춤 정렬 순서를 위한 메모리 내 캐시로 사용됩니다. 네트워크 오류가 있는 경우 정렬 순서를 가져오지 않았더라도 앱이 데이터를 표시할 수 있도록 빈 목록이 대신 사용됩니다.
+     * */
+    private var plantListSortOrderCache =
+        CacheOnSuccess(onErrorFallback = { listOf<String>() }) {
+            plantService.customPlantSortOrder()
+        }
+
+    private fun List<Plant>.applySort(customSortOrder: List<String>): List<Plant> {
+        return sortedBy { plant ->
+            val positionForItem = customSortOrder.indexOf(plant.plantId).let { order ->
+                if (order > -1) order else Int.MAX_VALUE
+            }
+            ComparablePair(positionForItem, plant.name)
+        }
+    }
+
+    //    plants 및 getPlantsWithGrowZone의 코드를 LiveData 빌더로 바꿉니다.
+    val plants: LiveData<List<Plant>> = liveData<List<Plant>> {
+        val plantsLiveData = plantDao.getPlants()
+        val customSortOrder = plantListSortOrderCache.getOrAwait()
+        emitSource(plantsLiveData.map { plantList ->
+            plantList.applySort(customSortOrder)
+        })
+    }
+
+    //TODO emitSource, getOrAwait 등 알아야한다.
+    fun getPlantsWithGrowZone(growZone: GrowZone) = liveData {
+        val plantsGrowZoneLiveData = plantDao.getPlantsWithGrowZoneNumber(growZone.number)
+        val customSortOrder = plantListSortOrderCache.getOrAwait()
+
+        Log.d(TAG, "test - ${customSortOrder.toString()}")
+
+        emitSource(plantsGrowZoneLiveData.map { plantList ->
+            plantList.applySort(customSortOrder)
+        })
+    }
+
     companion object {
 
         // For Singleton instantiation
-        @Volatile private var instance: PlantRepository? = null
+        @Volatile
+        private var instance: PlantRepository? = null
 
         fun getInstance(plantDao: PlantDao, plantService: NetworkService) =
             instance ?: synchronized(this) {
                 instance ?: PlantRepository(plantDao, plantService).also { instance = it }
             }
+
+        val TAG: String = PlantRepository::class.java.simpleName
     }
 }

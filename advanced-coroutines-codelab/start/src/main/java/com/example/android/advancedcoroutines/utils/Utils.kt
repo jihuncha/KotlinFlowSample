@@ -1,5 +1,6 @@
 package com.example.android.advancedcoroutines.utils
 
+//정렬..?
 data class ComparablePair<A: Comparable<A>, B: Comparable<B>>(
     val first: A,
     val second: B
