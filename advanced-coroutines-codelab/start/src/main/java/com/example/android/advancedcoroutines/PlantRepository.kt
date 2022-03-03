@@ -107,7 +107,7 @@ class PlantRepository private constructor(
         }
 
     /**
-     * 확장함수 - list<Plant> 에 applySort를 추가한다.
+     * 확장함수 - list<Plant> 에 applySort를 추가한다.ㅇ
      * */
     private fun List<Plant>.applySort(customSortOrder: List<String>): List<Plant> {
         return sortedBy { plant ->
