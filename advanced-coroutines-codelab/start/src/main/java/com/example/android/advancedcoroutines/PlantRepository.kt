@@ -106,6 +106,9 @@ class PlantRepository private constructor(
             plantService.customPlantSortOrder()
         }
 
+    /**
+     * 확장함수 - list<Plant> 에 applySort를 추가한다.
+     * */
     private fun List<Plant>.applySort(customSortOrder: List<String>): List<Plant> {
         return sortedBy { plant ->
             val positionForItem = customSortOrder.indexOf(plant.plantId).let { order ->
@@ -126,6 +129,7 @@ class PlantRepository private constructor(
 
     //TODO emitSource, getOrAwait 등 알아야한다.
     fun getPlantsWithGrowZone(growZone: GrowZone) = liveData {
+        //DB에서 데이터 가져옴
         val plantsGrowZoneLiveData = plantDao.getPlantsWithGrowZoneNumber(growZone.number)
         val customSortOrder = plantListSortOrderCache.getOrAwait()
 
