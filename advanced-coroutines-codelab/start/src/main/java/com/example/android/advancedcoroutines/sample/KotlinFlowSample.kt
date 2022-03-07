@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 
 fun main() {
+    println("main start")
     val scope = CoroutineScope(Dispatchers.Default)
     scope.launch {
         makeFlow().collect { value ->
